@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="ISO-8859-1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+      integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+      crossorigin=""
+    />
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script
+      src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+      integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+      crossorigin=""
+    ></script>
+    <link rel="stylesheet" href="/css/tagapoint.css" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
+      integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+      integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+      integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+      integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+      crossorigin="anonymous"
+    ></script>
+    <script src="//cdn.jsdelivr.net/npm/pouchdb@7.0.0/dist/pouchdb.min.js"></script>
+    <title>tagapoint</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      const userIcon = L.divIcon({
+        html: `<span>&#x1f642;</span>`,
+        className: "userIcon"
+      });
+
+      var map = L.map("map");
+
+      L.tileLayer(
+        "https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}",
+        {
+          attribution:
+            'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery &copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+          maxZoom: 18,
+          id: "mapbox.streets",
+          accessToken:
+            "pk.eyJ1IjoidmluY2VudHl0cmFuIiwiYSI6ImNqdm5kbGU1czFseno0OG11YXJydG05bzcifQ.4o6ur7oguB-NgvqBNLSMiQ"
+        }
+      ).addTo(map);
+      var nationalAlert = [];
+      function foundLocation(latlng) {
+        console.log("locationFound");
+        var userMarker = L.marker(latlng, {
+          icon: userIcon
+        }).addTo(map);
+        map.off("locationfound", onLocationFound);
+        axios
+          .get(
+            "https://api.weather.com/v1/geocode/" +
+              latlng.lat +
+              "/" +
+              latlng.lng +
+              "/forecast/wwir.json?units=m&language=en-US&apiKey=5424e9662cbf4bc3a4e9662cbf4bc3fe"
+          )
+          .then(function(response) {
+            console.log(response);
+            var weatherTextIcon = L.divIcon({
+              html:
+                "<div class='weatherText'>" +
+                response.data.forecast.phrase +
+                "</div>",
+              className: "nothing"
+            });
+            L.marker(latlng, { icon: weatherTextIcon }).addTo(map);
+          })
+          .catch(function(error) {
+            console.log(error);
+          })
+          .finally(function() {});
+
+        function getAlerts(next, latlng) {
+          axios
+            .get(
+              "https://api.weather.com/v3/alerts/headlines?geocode=" +
+                latlng.lat +
+                "%2C" +
+                latlng.lng +
+                "&format=json&language=en-US&next=" +
+                next +
+                "&apiKey=5424e9662cbf4bc3a4e9662cbf4bc3fe"
+            )
+            .then(function(response) {
+              console.log(response);
+              response.data.alerts.forEach(function(item) {
+                nationalAlert.push(item.headlineText + "<br />");
+              });
+              if (response.data.metadata.next != null) {
+                getAlerts(response.data.metadata.next, latlng);
+              } else {
+                var alertTextIcon = L.divIcon({
+                  html:
+                    "<div class='alertText'>" + nationalAlert.join() + "</div>",
+                  className: "nothing"
+                });
+                L.marker(latlng, { icon: alertTextIcon }).addTo(map);
+              }
+            })
+            .catch(function(error) {
+              console.log(error);
+            })
+            .finally(function() {});
+        }
+
+        axios
+          .get(
+            "https://api.weather.com/v3/alerts/headlines?geocode=" +
+              latlng.lat +
+              "%2C" +
+              latlng.lng +
+              "&format=json&language=en-US&apiKey=5424e9662cbf4bc3a4e9662cbf4bc3fe"
+          )
+          .then(function(response) {
+            console.log(response);
+            if (response.status == 200) {
+              response.data.alerts.forEach(function(item) {
+                nationalAlert.push(item.headlineText + "<br />");
+              });
+              if (response.data.metadata.next != null) {
+                getAlerts(response.data.metadata.next, latlng);
+              } else {
+                var alertTextIcon = L.divIcon({
+                  html:
+                    "<div class='alertText'>" + nationalAlert.join() + "</div>",
+                  className: "nothing"
+                });
+                L.marker(latlng, { icon: alertTextIcon }).addTo(map);
+              }
+            }
+          })
+          .catch(function(error) {
+            console.log(error);
+          })
+          .finally(function() {});
+      }
+      function onLocationFound(e) {
+        foundLocation(e.latlng);
+      }
+
+      map.on("locationfound", onLocationFound);
+
+      map.locate({
+        setView: true,
+        maxZoom: 15
+      });
+
+      //   var demoLocation = new L.latLng(42.989470, -81.295941);
+      //   map.setView(demoLocation, 15);
+      //   foundLocation(demoLocation);
+
+      var lastButtonClick = new Date().getTime();
+
+      var centerControl = L.Control.extend({
+        options: {
+          position: "topleft"
+          //control position - allowed: 'topleft', 'topright', 'bottomleft', 'bottomright'
+        },
+        onAdd: function(map) {
+          var container = L.DomUtil.create(
+            "div",
+            "leaflet-bar leaflet-control leaflet-control-custom centerControl"
+          );
+          container.style.backgroundColor = "white";
+          container.style.width = "32px";
+          container.style.height = "32px";
+          container.style.lineHeight = "26px";
+          container.style.textAlign = "center";
+          container.innerHTML = '<i class="fas fa-crosshairs centerIcon"></i>';
+          container.onclick = function() {
+            console.log("centerControlClick");
+            map.locate({
+              setView: true,
+              maxZoom: 15
+            });
+            lastButtonClick = new Date().getTime();
+          };
+          return container;
+        }
+      });
+
+      map.addControl(new centerControl());
+
+      var localDB = new PouchDB("tagapoint");
+      var remoteDB = new PouchDB(
+        "https://derinderpooduarmentathim:6cbc12bb8aa0f1d3c13168f49c1dde8f7474a6cc@c1d5c862-e0cd-4ab5-9da2-69b35243bebd-bluemix.cloudantnosqldb.appdomain.cloud/tagapoint"
+      );
+
+      localDB
+        .allDocs({
+          include_docs: true
+        })
+        .then(function(result) {
+          result.rows.forEach(function(obj) {
+            var point = L.marker(L.latLng(obj.doc.lat, obj.doc.lng), {
+              icon: L.divIcon({
+                html: "<span>" + obj.doc.text + "</span>",
+                className: "pointIcon"
+              })
+            }).addTo(map);
+          });
+        })
+        .catch(function(err) {
+          console.log(err);
+        });
+
+      localDB
+        .sync(remoteDB, {
+          live: true,
+          retry: true
+        })
+        .on("change", function(change) {
+          console.info(change);
+          // yo, something changed!
+          change.change.docs.forEach(function(obj) {
+            if (!obj._deleted) {
+              var point = L.marker(L.latLng(obj.lat, obj.lng), {
+                icon: L.divIcon({
+                  html: "<span>" + obj.text + "</span>",
+                  className: "pointIcon"
+                })
+              }).addTo(map);
+            }
+          });
+        })
+        .on("paused", function(info) {
+          // replication was paused, usually because of a lost connection
+        })
+        .on("active", function(info) {
+          // replication was resumed
+        })
+        .on("error", function(err) {
+          // totally unhandled error (shouldn't happen)
+          console.error(err);
+        });
+
+      var clickPopUp = L.popup();
+      function submitTag() {
+        var now = new Date();
+        var doc = {
+          _id:
+            now.getTime().toString() +
+            Math.floor(Math.random() * 1000000000).toString(),
+          text: document.getElementById("tagInput").value,
+          lat: clickPopUp.getLatLng().lat,
+          lng: clickPopUp.getLatLng().lng,
+          time: now.getTime()
+        };
+        console.info(doc);
+        localDB.put(doc);
+        clickPopUp.remove();
+      }
+      function onMapClick(e) {
+        var now = new Date().getTime();
+        var diff = now - lastButtonClick;
+        if (diff >= 1000) {
+          console.log("onMapClick " + e.latlng);
+          clickPopUp
+            .setLatLng(e.latlng)
+            .setContent(
+              `
+        				<form>
+        				  <div class="form-group">
+        				    <label for="tagInput">Tag a Point</label>
+        				    <input type="text" class="form-control" id="tagInput" aria-describedby="tagInputHelp" maxlength="50" size="50" >
+        				    <small id="tagInputHelp" class="form-text text-muted"><b>Emoji</b> or Keyword (Max Length: 50)</small>
+        				  </div>
+        				  <button type="button" class="btn btn-primary" onclick="submitTag()">Submit</button>
+        				</form>
+        				`
+            )
+            .openOn(map);
+          map.panTo(e.latlng);
+        } else {
+          console.log("onMapClick " + e.latlng + " as button press");
+        }
+      }
+
+      map.on("click", onMapClick);
+    </script>
+  </body>
+</html>

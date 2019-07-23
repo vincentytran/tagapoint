@@ -1,0 +1,52 @@
+body {
+	padding: 0;
+	margin: 0;
+}
+
+html, body, #map {
+	height: 100%;
+	width: 100vw;
+}
+
+.userIcon {
+  line-height: 20px;
+  color: #004080;
+  left: -10px;
+  top: -8px;
+  font-size: 20px;
+}
+
+.pointIcon {
+	line-height: 20px;
+	color: #004080;
+	left: -10px;
+	top: -8px;
+	font-size: 20px;
+	width: 200px !important;
+}
+
+.centerControl {
+}
+.centerIcon {
+	font-size: 18px;
+	text-align: center;
+	vertical-align: middle;
+	cursor: pointer;
+}
+
+.leaflet-popup-content {
+	width: 300px;
+}
+
+.weatherText {
+	/* text-align: center; */
+	width: 600px;
+	padding-left: 30px;
+	color: blue;
+}
+.alertText {
+	width: 600px;
+	padding-left: 30px;
+	padding-top: 30px;
+	color: red;
+}
